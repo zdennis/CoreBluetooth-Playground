@@ -11,6 +11,7 @@
 @interface MHSViewController ()
   @property CBMutableCharacteristic *customCharacteristic;
   @property CBMutableService *customService;
+  @property NSInteger value;
 @end
 
 static NSString * const kServiceUUID = @"C60BC519-BF72-433F-9D35-F590875CE161";
@@ -18,12 +19,15 @@ static NSString * const kCharacteristicUUID = @"0FA586DA-F9BF-4F80-8DB2-AF134BB1
 
 @implementation MHSViewController
 
+
 - (void)viewDidLoad
 {
-    [super viewDidLoad];
-	// Do any additional setup after loading the view, typically from a nib.
+  [super viewDidLoad];
 
+	// Do any additional setup after loading the view, typically from a nib.
   self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:nil];
+
+  [self updateValue: self];
 }
 
 # pragma mark PeripheralManagerDelegate
@@ -34,7 +38,8 @@ static NSString * const kCharacteristicUUID = @"0FA586DA-F9BF-4F80-8DB2-AF134BB1
   } else {
     NSLog(@"Adding a service: %@", kServiceUUID);
     // start advertising the service
-    [self.peripheralManager startAdvertising:@{CBAdvertisementDataLocalNameKey : @"MutuallyHuman", CBAdvertisementDataServiceUUIDsKey: @[[CBUUID UUIDWithString:kServiceUUID]] }];
+    [self.peripheralManager startAdvertising:@{CBAdvertisementDataLocalNameKey : @"MHSPlayground",
+                                               CBAdvertisementDataServiceUUIDsKey: @[[CBUUID UUIDWithString:kServiceUUID]] }];
   }
 }
 
@@ -57,12 +62,8 @@ static NSString * const kCharacteristicUUID = @"0FA586DA-F9BF-4F80-8DB2-AF134BB1
 }
 
 - (void) peripheralManager:(CBPeripheralManager *)peripheral central:(CBCentral *)central didSubscribeToCharacteristic:(CBCharacteristic *)characteristic {
-  NSLog(@"Someone subscribe");
-  
-  NSData *updatedValue = [@"foobarbaz" dataUsingEncoding:NSUTF8StringEncoding]; // fetch the characteristic's new value
-  BOOL didSendValue = [self.peripheralManager updateValue:updatedValue
-                                     forCharacteristic:(CBMutableCharacteristic *)characteristic onSubscribedCentrals:nil];
-  NSLog(@"Did send updated value: %d", didSendValue);
+  NSLog(@"Central subscribed");
+  [self broadcastValue];
 }
 
 - (void) peripheralManager:(CBPeripheralManager *)peripheral didReceiveReadRequest:(CBATTRequest *)request{
@@ -97,5 +98,27 @@ static NSString * const kCharacteristicUUID = @"0FA586DA-F9BF-4F80-8DB2-AF134BB1
 - (void) viewWillDisappear:(BOOL)animated {
   NSLog(@"View will disappear");
 }
+
+- (IBAction)updateValue:(id)sender {
+  self.value = [self generateValue];
+  self.valueLabel.text = [NSString stringWithFormat:@"%ld", (long)self.value];
+  [self broadcastValue];
+}
+
+- (NSInteger) generateValue {
+  NSInteger value = arc4random() % 100;
+  return value;
+}
+
+- (void) broadcastValue {
+  if(self.customCharacteristic){
+    NSString *str = [NSString stringWithFormat:@"%ld", (long) self.value];
+    NSData *updatedValue = [str dataUsingEncoding:NSUTF8StringEncoding]; // fetch the characteristic's new value
+    BOOL didSendValue = [self.peripheralManager updateValue:updatedValue
+                                          forCharacteristic: self.customCharacteristic onSubscribedCentrals:nil];
+    NSLog(@"Did send updated value: %@", updatedValue);
+  }
+}
+
 
 @end

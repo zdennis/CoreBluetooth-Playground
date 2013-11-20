@@ -12,5 +12,7 @@
 @interface MHSViewController : UIViewController <CBPeripheralManagerDelegate>
 
 @property (nonatomic, strong) CBPeripheralManager *peripheralManager;
+- (IBAction)updateValue:(id)sender;
+@property (weak, nonatomic) IBOutlet UILabel *valueLabel;
 
 @end
